@@ -3,7 +3,6 @@ import tarfile
 import json
 import tkinter as tk
 from tkinter import scrolledtext
-import subprocess
 
 
 # Load configuration
@@ -48,14 +47,37 @@ def execute_command(event):
             current_dir = new_dir
         else:
             console.insert(tk.END, f"cd: no such file or directory\n")
-    else:
+    elif command == "ls":
         try:
-            result = subprocess.run(command, shell=True, cwd=current_dir, capture_output=True, text=True)
-            console.insert(tk.END, result.stdout)
-            if result.stderr:
-                console.insert(tk.END, result.stderr)
+            files = os.listdir(current_dir)
+            console.insert(tk.END, "\n".join(files) + "\n")
         except Exception as e:
             console.insert(tk.END, f"Error: {str(e)}\n")
+    elif command == "exit":
+        # Write the filesystem back to the archive
+        with tarfile.open(path, 'w') as tar:
+            tar.add(extracted_dir, arcname=os.path.basename(extracted_dir))
+        root.quit()
+    elif command.startswith("cat "):
+        file_path = os.path.join(current_dir, command[4:].strip())
+        if os.path.isfile(file_path):
+            with open(file_path, 'r') as file:
+                console.insert(tk.END, file.read() + "\n")
+        else:
+            console.insert(tk.END, f"cat: {file_path}: No such file\n")
+    elif command == "uname":
+        console.insert(tk.END, platform.system() + "\n")
+    elif command.startswith("rmdir "):
+        dir_path = os.path.join(current_dir, command[6:].strip())
+        if os.path.isdir(dir_path):
+            try:
+                os.rmdir(dir_path)
+                #console.insert(tk.END, f"rmdir: {dir_path} removed\n")
+            except Exception as e:
+                console.insert(tk.END, f"rmdir: {str(e)}\n")
+        else:
+            console.insert(tk.END, f"rmdir: {dir_path}: No such directory\n")
+
 
     display_prompt()
 
