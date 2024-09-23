@@ -28,7 +28,7 @@ current_dir = extracted_dir
 root = tk.Tk()
 root.title(f"{user_name}@{computer_name}")
 
-console = scrolledtext.ScrolledText(root, wrap=tk.WORD, font=("Courier", 12))
+console = scrolledtext.ScrolledText(root, wrap=tk.WORD, font=("Courier", 12), bg="purple", fg="chartreuse1")
 console.pack(fill=tk.BOTH, expand=True)
 relative_dir = ''
 
