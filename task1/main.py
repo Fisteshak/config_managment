@@ -3,7 +3,7 @@ import tarfile
 import json
 import tkinter as tk
 from tkinter import scrolledtext
-
+import platform
 
 # Load configuration
 with open('config.json') as config_file:
@@ -53,11 +53,7 @@ def execute_command(event):
             console.insert(tk.END, "\n".join(files) + "\n")
         except Exception as e:
             console.insert(tk.END, f"Error: {str(e)}\n")
-    elif command == "exit":
-        # Write the filesystem back to the archive
-        with tarfile.open(path, 'w') as tar:
-            tar.add(extracted_dir, arcname=os.path.basename(extracted_dir))
-        root.quit()
+
     elif command.startswith("cat "):
         file_path = os.path.join(current_dir, command[4:].strip())
         if os.path.isfile(file_path):
@@ -77,9 +73,17 @@ def execute_command(event):
                 console.insert(tk.END, f"rmdir: {str(e)}\n")
         else:
             console.insert(tk.END, f"rmdir: {dir_path}: No such directory\n")
-
+    elif command == "exit":
+        add_to_tar(path, extracted_dir)
+        root.quit()
 
     display_prompt()
+
+def add_to_tar(tar_path, dir_to_add):
+    #
+    with tarfile.open(tar_path, 'w') as tar:
+        tar.add(dir_to_add, arcname=os.path.basename(dir_to_add))
+
 
 def display_prompt():
     relative_dir = os.path.relpath(current_dir, extracted_dir)
