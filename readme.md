@@ -12,7 +12,7 @@
 ### Запуск проекта
 
 ```bash
-python main.py
+python task1/main.py
 ```
 ### Пример использования
 ![](/images/image1-1.png)
