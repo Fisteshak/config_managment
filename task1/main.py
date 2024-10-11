@@ -159,4 +159,4 @@ class TerminalApp:
         self.console.see(tk.END)
 
 if __name__ == "__main__":
-    TerminalApp('config.json')
+    TerminalApp("D:\\Projects\\config_managment\\task1\\config.json")
