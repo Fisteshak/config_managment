@@ -7,16 +7,10 @@ from main import CommandProcessor
 class TestCommandProcessor(unittest.TestCase):
     def setUp(self):
         # Create a temporary config file for testing
-        self.config_data = {
-            "user_name": "test_user",
-            "computer_name": "test_computer",
-            "path": "fs.tar"
-        }
-        with open('test_config.json', 'w') as config_file:
-            json.dump(self.config_data, config_file)
+
 
         # Initialize the CommandProcessor instance
-        self.processor = CommandProcessor('test_config.json')
+        self.processor = CommandProcessor('user', 'computer', 'D:\\Projects\\config_managment\\task1\\fs.tar')
 
     def tearDown(self):
         # Clean up the test configuration file
