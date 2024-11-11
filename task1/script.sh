@@ -1,6 +1,10 @@
 ls
-rmdir var
+rmdir mnt
 ls
-cd test_dir
-cat test_file.txt
+cd home
+cd vasya
+cat test.txt
+cd ..
+cd ..
+cat .gitignore
 uname
