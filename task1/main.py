@@ -4,6 +4,8 @@ import json
 import tkinter as tk
 from tkinter import scrolledtext
 import platform
+import subprocess
+import os
 
 class CommandProcessor:
     def __init__(self, user_name, computer_name, path):
@@ -13,18 +15,16 @@ class CommandProcessor:
 
         self.filename_without_extension = os.path.splitext(os.path.basename(self.path))[0]
 
-        # Extract filesystem
-        self.base_dir = os.path.dirname(os.path.abspath(__file__))
-        with tarfile.open(self.path, 'r') as tar:
-            tar.extractall(path=self.base_dir)
+        # Open the tarfile
+        self.tar = tarfile.open(self.path, 'r')
 
         # Set the root folder
-        self.extracted_dir = os.path.join(self.base_dir, self.filename_without_extension)
-        self.current_dir = self.extracted_dir
+        self.current_dir = self.filename_without_extension
 
     def cd(self, path):
-        new_dir = os.path.abspath(os.path.join(self.current_dir, path))
-        if new_dir.startswith(self.extracted_dir) and os.path.isdir(new_dir):
+        new_dir = os.path.normpath(os.path.join(self.current_dir, path))
+        new_dir = new_dir.replace("\\", "/")  # Ensure consistent path format
+        if any(member.name.rstrip('/') == new_dir and member.isdir() for member in self.tar.getmembers()):
             self.current_dir = new_dir
             return ""
         else:
@@ -32,43 +32,73 @@ class CommandProcessor:
 
     def ls(self):
         try:
-            files = os.listdir(self.current_dir)
-            return "\n".join(files) + "\n"
+            current_dir_prefix = self.current_dir.rstrip('/') + '/'
+            files = [
+                member.name[len(current_dir_prefix):].split('/')[0]
+                for member in self.tar.getmembers()
+                if member.name.startswith(current_dir_prefix) and member.name != current_dir_prefix
+            ]
+            return "\n".join(sorted(set(files))) + "\n"
         except Exception as e:
             return f"Error: {str(e)}\n"
 
     def cat(self, file_path):
-        full_path = os.path.join(self.current_dir, file_path)
-        if os.path.isfile(full_path):
-            with open(full_path, 'r') as file:
-                return file.read() + "\n"
-        else:
+        full_path = os.path.normpath(os.path.join(self.current_dir, file_path))
+        full_path = full_path.replace("\\", "/")  # Ensure consistent path format
+        try:
+            member = self.tar.getmember(full_path)
+            if member.isfile():
+                file = self.tar.extractfile(member)
+                return file.read().decode() + "\n"
+            else:
+                return f"cat: {file_path}: No such file\n"
+        except KeyError:
             return f"cat: {file_path}: No such file\n"
 
     def uname(self):
         return platform.system() + "\n"
 
+
     def rmdir(self, dir_path):
-        full_path = os.path.join(self.current_dir, dir_path)
-        if os.path.isdir(full_path):
-            try:
-                os.rmdir(full_path)
-                return ""
-            except Exception as e:
-                return f"rmdir: {str(e)}\n"
-        else:
-            return f"rmdir: {dir_path}: No such directory\n"
+        full_path = os.path.normpath(os.path.join(self.current_dir, dir_path))
+        full_path = full_path.replace("\\", "/")
+        self_path = self.path.replace("\\", "/")
+        
+        # Check if directory exists in the archive
+        try:
+            dir_exists = False
+            for member in self.tar.getmembers():
+                if member.name.startswith(full_path) and member.isdir():
+                    dir_exists = True
+                    break
+                    
+            if not dir_exists:
+                return f"rmdir: {dir_path}: No such directory\n"
+                
+            # Close the tar archive
+            self.tar.close()
+            
+            # Use 7z to delete the directory from the archive  
+            command = f'7z d "{self_path}" "{full_path}"'
+            result = os.system(command)
+            
+            # Reopen the tar archive
+            self.tar = tarfile.open(self.path, 'r')
+            
+            if result == 0:
+                return f"Directory {dir_path} removed successfully\n"
+            else:
+                return f"Error removing directory {dir_path}\n"
+                
+        except Exception as e:
+            return f"Error: {str(e)}\n"
 
     def exit(self):
-        self.add_to_tar(self.path, self.extracted_dir)
+        self.tar.close()
         return ""
 
-    def add_to_tar(self, tar_path, dir_to_add):
-        with tarfile.open(tar_path, 'w') as tar:
-            tar.add(dir_to_add, arcname=os.path.basename(dir_to_add))
-
     def get_prompt(self):
-        relative_dir = os.path.relpath(self.current_dir, self.extracted_dir)
+        relative_dir = os.path.relpath(self.current_dir, self.filename_without_extension)
         relative_dir = relative_dir.replace("\\", "/")
         return f"{self.user_name}@{self.computer_name}:/{relative_dir if relative_dir != '.' else ''}$ "
 
@@ -101,7 +131,6 @@ class TerminalApp:
         self.execute_script()
 
         self.display_prompt()
-
 
         self.root.mainloop()
 
