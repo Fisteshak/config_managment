@@ -12,8 +12,14 @@
 ### Запуск проекта
 
 ```bash
+git clone https://github.com/Fisteshak/config_managment
+cd config_managment
 python task1/main.py
 ```
 ### Пример использования
-![](/images/image1-1.png)
+![](/images/image1-2.png)
+
+### Тестирование
+![](/images/tests1.png)
+
 
