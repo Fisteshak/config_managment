@@ -1,0 +1,1 @@
+python main.py --package pandas --output D:\Projects\config_managment\task2\graph.txt
