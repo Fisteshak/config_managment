@@ -1,5 +1,13 @@
 import GraphGenerator
 import argparse
+import os
+
+def print_graph(file_path):
+    print("\nGenerated graph:")
+    print("-" * 40)
+    with open(os.path.normpath(file_path), 'r') as f:
+        print(f.read())
+    print("-" * 40) 
 
 def main():
     parser = argparse.ArgumentParser(description='Generate dependency graph in Mermaid format')
@@ -9,8 +17,14 @@ def main():
 
     args = parser.parse_args()
 
-    generator = GraphGenerator(args.output, args.max_depth)
-    generator.generate_mermaid(args.package)
+    generator = GraphGenerator.GraphGenerator(args.output, args.max_depth)
+    success = generator.generate_mermaid(args.package)
+    
+    # Print graph to console only if generation was successful
+    if success:
+        print_graph(args.output)
+    else:
+        print("\nFailed to generate dependency graph.")
 
-if __name__ == "__main__":
+if __name__ == "__main__": 
     main()

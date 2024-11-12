@@ -1,16 +1,18 @@
 import subprocess
 import json
 import sys
+import os
 import argparse
 from subprocess import DEVNULL
 
 class GraphGenerator:
     def __init__(self, output_path, max_depth):
-        self.output_path = output_path
+        self.output_path = os.path.normpath(output_path)
         self.max_depth = max_depth
         self.dependencies = set()
         self.installed_packages = set()
         self._refresh_installed_packages()
+        self.success = False
 
     def _refresh_installed_packages(self):
         self.log("Refreshing list of installed packages")
@@ -22,6 +24,7 @@ class GraphGenerator:
             )
             if result.returncode != 0:
                 self.log("Failed to get list of installed packages")
+                self.log(result)
                 return
                 
             self.installed_packages = {
@@ -103,7 +106,8 @@ class GraphGenerator:
         if not self.is_package_installed(package):
             if not self.install_package(package):
                 self.log(f"Failed to install {package}. Cannot generate dependency graph.")
-                return
+                self.success = False
+                return False
 
         mermaid_text = "graph TD\n"
         self.build_dependency_tree(package)
@@ -115,3 +119,5 @@ class GraphGenerator:
         with open(self.output_path, 'w') as f:
             f.write(mermaid_text)
         self.log(f"Graph saved to {self.output_path}")
+        self.success = True
+        return True
