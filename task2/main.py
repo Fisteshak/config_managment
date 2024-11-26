@@ -26,11 +26,9 @@ def main():
 
     if success:
         print_graph(args.output)
-        if args.vis:
-            if args.vis.endswith('.py'):
-                subprocess.run([sys.executable, args.vis-path, '--path', args.output])
-            else:
-                subprocess.run([args.vis-path, '--path', args.output])
+        if args.vis_path:
+            subprocess.run([sys.executable, args.vis_path, '--path', args.output])
+
     else:
         print("\nFailed to generate dependency graph.")
 
