@@ -33,13 +33,14 @@ def convert_comments(comment):
     if not comment_str:
         return ""
     lines = [line.strip('# ') for line in comment_str.split('\n') if line.strip()]
-    return "".join(f"% {line}\n" for line in lines)
+    return "".join(f"% {line}\n" for line in lines).rstrip('\n')  # Remove trailing newline
 
 def convert_toml(toml_doc: TOMLDocument) -> str:
     result = []
     sections = {}
     current_section = "root"
 
+    # Collect items in sections
     for item in toml_doc.body:
         if isinstance(item[1], Whitespace):
             continue
@@ -67,6 +68,33 @@ def convert_toml(toml_doc: TOMLDocument) -> str:
             if current_section not in sections:
                 sections[current_section] = []
             sections[current_section].append((key, value))
+
+    # Process comments to merge sequential ones
+    for section in sections:
+        merged_items = []
+        comment_buffer = []
+
+        for item in sections[section]:
+            if isinstance(item, str) and item.startswith('%'):  # Is comment
+                comment_buffer.append(item.strip('% \n'))
+            else:
+                if comment_buffer:  # Flush comment buffer
+                    if len(comment_buffer) > 1:
+                        merged_comment = "<!--\n" + "\n".join(comment_buffer) + "\n-->"
+                    else:
+                        merged_comment = f"% {comment_buffer[0]}"
+                    merged_items.append(merged_comment)
+                    comment_buffer = []
+                merged_items.append(item)
+
+        if comment_buffer:  # Don't forget remaining comments
+            if len(comment_buffer) > 1:
+                merged_comment = "<!--\n" + "\n".join(comment_buffer) + "\n-->"
+            else:
+                merged_comment = f"% {comment_buffer[0]}"
+            merged_items.append(merged_comment)
+
+        sections[section] = merged_items
 
     # Process root section first
     if "root" in sections:
