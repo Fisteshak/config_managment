@@ -5,13 +5,16 @@ title = "TOML Example"
 # this comment is multiline
 # asd
 
-[owner]
-name = "Tom Preston-Werner"
+a = 10
+b = 15.0
+c = 2.0
+x = "?(a b * c +)"
+y = "?(b a mod)"
+z = "?(a b max)"
 
 [database]
 enabled = 1
 temp_targets = { cpu = 79.5, case = 72.0 }
-a = "1"
 
 [servers]
 [servers.alpha]

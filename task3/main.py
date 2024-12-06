@@ -3,6 +3,7 @@ from pathlib import Path
 import re
 from tomlkit import parse, TOMLDocument
 from tomlkit.items import Comment, Table, Array, Whitespace
+from typing import Dict, Any
 
 def convert_value(value, indent=0):
     if isinstance(value, (str)):
@@ -56,10 +57,79 @@ def validate_table_recursively(table: Table, path=""):
                     full_path = f"{path}.{key}.{k}" if path else f"{key}.{k}"
                     raise ValueError(f"Invalid key name: {full_path}. Names must start with a letter or underscore and contain only alphanumeric characters and underscores.")
 
+def evaluate_expression(expr: str, variables: Dict[str, Any]) -> Any:
+    if not expr.startswith("?(") or not expr.endswith(")"):
+        return expr
+
+    # Remove "?(" and ")" and split into tokens
+    tokens = expr[2:-1].strip().split()
+    if len(tokens) < 3:
+        raise ValueError(f"Invalid expression: {expr}")
+
+    stack = []
+    for token in tokens:
+        if token in {"+", "-", "*", "\\", "max", "mod"}:
+            if len(stack) < 2:
+                raise ValueError(f"Invalid expression: not enough operands for {token}")
+            b = stack.pop()
+            a = stack.pop()
+
+            if isinstance(a, str) and a in variables:
+                a = variables[a]
+            if isinstance(b, str) and b in variables:
+                b = variables[b]
+
+            try:
+                a, b = float(a), float(b)
+                if token == "+":
+                    stack.append(a + b)
+                elif token == "-":
+                    stack.append(a - b)
+                elif token == "*":
+                    stack.append(a * b)
+                elif token == "\\":
+                    if b == 0:
+                        raise ValueError("Division by zero")
+                    stack.append(a / b)
+                elif token == "max":
+                    stack.append(max(a, b))
+                elif token == "mod":
+                    if b == 0:
+                        raise ValueError("Modulo by zero")
+                    stack.append(a % b)
+            except ValueError as e:
+                raise ValueError(f"Invalid operands for {token}: {a}, {b}")
+        else:
+            stack.append(token)
+
+    if len(stack) != 1:
+        raise ValueError(f"Invalid expression: too many operands")
+    return stack[0]
+
 def convert_toml(toml_doc: TOMLDocument) -> str:
     result = []
     sections = {}
     current_section = "root"
+    variables = {}
+
+    # First pass: collect all variables
+    for item in toml_doc.body:
+        if isinstance(item[1], (Whitespace, Comment)):
+            continue
+        key, value = item
+        if not isinstance(value, Table):
+            if isinstance(value, str):
+                variables[key.key] = value
+            else:
+                variables[key.key] = value
+
+    # Second pass: evaluate expressions
+    for item in toml_doc.body:
+        if isinstance(item[1], (Whitespace, Comment)):
+            continue
+        key, value = item
+        if isinstance(value, str) and value.startswith("?("):
+            variables[key.key] = evaluate_expression(value, variables)
 
     # Validate section names and keys
     for item in toml_doc.body:
@@ -138,27 +208,26 @@ def convert_toml(toml_doc: TOMLDocument) -> str:
                 result.append(item)
             else:  # Key-value pair
                 key, value = item
-                result.append(f"var {key} = {convert_value(value)};")
+                if isinstance(value, str) and value.startswith("?("):
+                    value = variables[key]
+                result.append(f"{key} = {convert_value(value)};")
 
     # Process other sections
     for section, items in sections.items():
         if section == "root":
             continue
 
-        section_items = []
-        for item in items:
-            if isinstance(item, str):  # Comment
-                section_items.append(item)
-            else:  # Key-value pair
-                key, value = item
-                if isinstance(value, Table):
-                    section_items.append(f"    {key} = {convert_value(value)}")
-                else:
-                    section_items.append(f"    {key} = {convert_value(value)}")
-
-        if section_items:
-            result.append(f"var {section} = {{")
-            result.extend(section_items)
+        if items:
+            result.append(f"{section} = {{")
+            for item in items:
+                if isinstance(item, str):  # Comment
+                    result.append(f"    {item}")
+                else:  # Key-value pair
+                    key, value = item
+                    if isinstance(value, Table):
+                        result.append(f"    {key} : {convert_value(value, 4)}")
+                    else:
+                        result.append(f"    {key} : {convert_value(value)}")
             result.append("};")
 
     return "\n".join(result)
