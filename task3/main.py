@@ -1,58 +1,113 @@
 import sys
 from pathlib import Path
-from tomlkit import parse, TOMLDocument, items
+from tomlkit import parse, TOMLDocument
+from tomlkit.items import Comment, Table, Array, Whitespace
 
-def convert_value(value):
-    if callable(value):  # Add check for callable objects
+def convert_value(value, indent=0):
+    if isinstance(value, (str)):
+        # Escape quotes and use @ for raw strings
+        escaped = value.replace('"', '""')
+        return f'@"{escaped}"'
+    if isinstance(value, bool):
+        return str(value).lower()
+    if isinstance(value, (int, float)):
         return str(value)
-    if isinstance(value, str):
-        return f'@"{value}"'
-    elif isinstance(value, (int, float)):
-        return str(value)
-    elif isinstance(value, dict):
-        items = [f"{k} : {convert_value(v)}" for k, v in value.items()]
-        return "{\n    " + ",\n    ".join(items) + "\n}"
-    else:
-        raise ValueError(f"Unsupported type: {type(value)}")
+    if isinstance(value, (dict, Table)):
+        items = []
+        next_indent = indent + 4
+        indent_str = " " * indent
+        next_indent_str = " " * next_indent
+        for k, v in dict(value).items():
+            converted = convert_value(v, next_indent)
+            items.append(f"{next_indent_str}{k} : {converted}")
+        return "{\n" + ",\n".join(items) + f"\n{indent_str}}}"
+    if isinstance(value, (list, tuple, Array)):
+        items = [convert_value(v, indent) for v in value]
+        return f"[{', '.join(items)}]"
+    return str(value)
 
 def convert_comments(comment):
-    if not comment or callable(comment):  # Add check for callable
+    if not comment:
         return ""
-    lines = str(comment).split('\n')  # Convert to string first
-    if len(lines) == 1:
-        return f"%{lines[0]}\n"
-    return "<!--\n" + "\n".join(line.strip('# ') for line in lines if line.strip()) + "\n-->\n"
+    comment_str = str(comment).strip()
+    if not comment_str:
+        return ""
+    lines = [line.strip('# ') for line in comment_str.split('\n') if line.strip()]
+    return "".join(f"% {line}\n" for line in lines)
 
 def convert_toml(toml_doc: TOMLDocument) -> str:
     result = []
+    sections = {}
+    current_section = "root"
 
-    def process_table(table, prefix=""):
-        for key, value in table.items():
-            full_key = f"{prefix}_{key}" if prefix else key
-            if hasattr(value, "comment"):
-                comment = convert_comments(value.comment)
-                if comment:
-                    result.append(comment)
-            if hasattr(value, "value"):
-                val = value.value
+    for item in toml_doc.body:
+        if isinstance(item[1], Whitespace):
+            continue
+        if isinstance(item[1], Comment):
+            comment = convert_comments(item[1])
+            if comment:
+                if current_section not in sections:
+                    sections[current_section] = []
+                sections[current_section].append(comment)
+            continue
+
+        key, value = item
+        if isinstance(value, Table):
+            current_section = key
+            if "." in key:
+                parent, child = key.split(".", 1)
+                if parent not in sections:
+                    sections[parent] = []
+                sections[parent].append((child, value))
             else:
-                val = value
+                if key not in sections:
+                    sections[key] = []
+                sections[key].extend([(k, v) for k, v in dict(value).items()])
+        else:
+            if current_section not in sections:
+                sections[current_section] = []
+            sections[current_section].append((key, value))
 
-            if isinstance(val, dict):
-                process_table(val, full_key)
-            else:
-                result.append(f"var {full_key} = {convert_value(val)};")
+    # Process root section first
+    if "root" in sections:
+        for item in sections["root"]:
+            if isinstance(item, str):  # Comment
+                result.append(item)
+            else:  # Key-value pair
+                key, value = item
+                result.append(f"var {key} = {convert_value(value)};")
 
-    process_table(toml_doc)
+    # Process other sections
+    for section, items in sections.items():
+        if section == "root":
+            continue
+
+        section_items = []
+        for item in items:
+            if isinstance(item, str):  # Comment
+                section_items.append(item)
+            else:  # Key-value pair
+                key, value = item
+                if isinstance(value, Table):
+                    section_items.append(f"    {key} = {convert_value(value)}")
+                else:
+                    section_items.append(f"    {key} = {convert_value(value)}")
+
+        if section_items:
+            result.append(f"var {section} = {{")
+            result.extend(section_items)
+            result.append("};")
+
     return "\n".join(result)
 
 def main():
     if len(sys.argv) != 3:
-        print("Usage: python main.py input.toml output.conf")
-        return 1
+        input_path = "D:\\Projects\\config_managment\\task3\\example.toml"
+        output_path = "output.conf"
+    else:
 
-    input_path = Path(sys.argv[1])
-    output_path = Path(sys.argv[2])
+        input_path = Path(sys.argv[1])
+        output_path = Path(sys.argv[2])
 
     try:
         with open(input_path, 'r') as f:
@@ -70,4 +125,4 @@ def main():
         return 1
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

@@ -1,18 +1,19 @@
+# name
 title = "TOML Example"
+
+# here is tables
+# asd
+# asd
 
 [owner]
 name = "Tom Preston-Werner"
-    #this is comment
 
-    # this
-    # is
-     # multiline comment
 [database]
-enabled = true
+enabled = 1
 temp_targets = { cpu = 79.5, case = 72.0 }
+a = "1"
 
 [servers]
-
 [servers.alpha]
 ip = "10.0.0.1"
 role = "frontend"
