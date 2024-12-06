@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import re
 from tomlkit import parse, TOMLDocument
 from tomlkit.items import Comment, Table, Array, Whitespace
 
@@ -35,10 +36,44 @@ def convert_comments(comment):
     lines = [line.strip('# ') for line in comment_str.split('\n') if line.strip()]
     return "".join(f"% {line}\n" for line in lines).rstrip('\n')  # Remove trailing newline
 
+def validate_name(name: str) -> bool:
+    if not name or not isinstance(name, str):
+        return False
+    pattern = re.compile(r'^[_a-zA-Z][_a-zA-Z0-9]*$')
+    return bool(pattern.match(name))
+
+def validate_table_recursively(table: Table, path=""):
+    for key, value in table.items():
+        if not validate_name(str(key)):
+            full_path = f"{path}.{key}" if path else key
+            raise ValueError(f"Invalid key name: {full_path}. Names must start with a letter or underscore and contain only alphanumeric characters and underscores.")
+
+        if isinstance(value, Table):
+            validate_table_recursively(value, f"{path}.{key}" if path else key)
+        elif isinstance(value, dict):
+            for k in value.keys():
+                if not validate_name(k):
+                    full_path = f"{path}.{key}.{k}" if path else f"{key}.{k}"
+                    raise ValueError(f"Invalid key name: {full_path}. Names must start with a letter or underscore and contain only alphanumeric characters and underscores.")
+
 def convert_toml(toml_doc: TOMLDocument) -> str:
     result = []
     sections = {}
     current_section = "root"
+
+    # Validate section names and keys
+    for item in toml_doc.body:
+        if isinstance(item[1], (Whitespace, Comment)):
+            continue
+
+        key, value = item
+        if not validate_name(key.key):
+            raise ValueError(f"Invalid name: {key}. Names must start with a letter and contain only alphanumeric characters and underscores.")
+
+        if isinstance(value, Table):
+            if not validate_name(key.key):
+                raise ValueError(f"Invalid section name: {key}. Section names must start with a letter and contain only alphanumeric characters and underscores.")
+            validate_table_recursively(value, key)
 
     # Collect items in sections
     for item in toml_doc.body:
