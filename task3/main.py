@@ -7,9 +7,16 @@ from typing import Dict, Any
 
 def convert_value(value, indent=0):
     if isinstance(value, (str)):
-        # Escape quotes and use @ for raw strings
-        escaped = value.replace('"', '""')
-        return f'@"{escaped}"'
+        # Validate string literal
+        try:
+            # Check if string is properly terminated
+            if value.count('"') % 2 != 0:
+                raise ValueError("Unterminated string literal")
+            # Escape quotes and use @ for raw strings
+            escaped = value.replace('"', '""')
+            return f'@"{escaped}"'
+        except Exception as e:
+            raise ValueError(f"Invalid string literal: {str(e)}")
     if isinstance(value, bool):
         return str(value).lower()
     if isinstance(value, (int, float)):
@@ -19,7 +26,8 @@ def convert_value(value, indent=0):
         next_indent = indent + 4
         indent_str = " " * indent
         next_indent_str = " " * next_indent
-        for k, v in dict(value).items():
+        dict_items = list(dict(value).items())
+        for k, v in dict_items:
             converted = convert_value(v, next_indent)
             items.append(f"{next_indent_str}{k} : {converted}")
         return "{\n" + ",\n".join(items) + f"\n{indent_str}}}"

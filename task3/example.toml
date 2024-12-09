@@ -1,26 +1,28 @@
 # name
 title = "TOML Example"
 
-# here is tables
+# here are some evals
 # this comment is multiline
-# asd
+# hi
 
 a = 10
 b = 15.0
-c = 2.0
+c = 2.0e2
 x = "?(a b * c +)"
-y = "?(b a mod)"
-z = "?(a b max)"
+y = "?(b x mod)"
+z = "?(c b max)"
+
+# and here are tables
 
 [database]
 enabled = 1
-temp_targets = { cpu = 79.5, case = 72.0 }
+temp_targets = { cpu = 79.5, case = 72.0, gpu = 90.0, memory = 50.0 }
 
 [servers]
 [servers.alpha]
 ip = "10.0.0.1"
-role = "frontend"
+role = "asd"
 
 [servers.beta]
 ip = "10.0.0.2"
-role = "backend"
+role = "qwe"
