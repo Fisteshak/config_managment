@@ -241,18 +241,24 @@ def convert_toml(toml_doc: TOMLDocument) -> str:
     return "\n".join(result)
 
 def main():
-    if len(sys.argv) != 3:
-        input_path = "D:\\Projects\\config_managment\\task3\\example.toml"
-        output_path = "output.conf"
-    else:
+    if len(sys.argv) != 2:
+        print("Usage: python main.py <output_file_path>")
+        return 1
 
-        input_path = Path(sys.argv[1])
-        output_path = Path(sys.argv[2])
+    output_path = sys.argv[1]
+    print("Enter the TOML content (end with EOF):")
+
+    toml_lines = []
+    try:
+        while True:
+            line = input()
+            toml_lines.append(line)
+    except EOFError:
+        pass
+
+    toml_content = "\n".join(toml_lines)
 
     try:
-        with open(input_path, 'r') as f:
-            toml_content = f.read()
-
         toml_doc = parse(toml_content)
         converted = convert_toml(toml_doc)
 
