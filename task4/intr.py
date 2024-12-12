@@ -43,20 +43,17 @@ class Interpreter:
             opcode = (cmd >> 24) & 0xFF
             operand = cmd & 0xFFFFFF
             if opcode == self.LOAD_CONST:
-                print("load const", operand)
                 self.ax = operand
             elif opcode == self.READ_MEM:
-                if operand in self.memory:
-                    self.ax = self.memory[operand]
+                print(self.memory)
+                if self.memory.get(self.ax) != None:
+                    self.ax = self.memory.get(self.ax)
                 else:
                     self.ax = 0
-                print("read mem", operand)
             elif opcode == self.WRITE_MEM:
                 self.memory[operand] = self.ax
-                print("write mem", operand)
             elif opcode == self.POP_CNT:
                 self.memory[operand] = self.ax
-                print("pop cnt", operand)
             else:
                 print(f"Unknown opcode: {opcode}")
 
