@@ -45,7 +45,6 @@ class Interpreter:
             if opcode == self.LOAD_CONST:
                 self.ax = operand
             elif opcode == self.READ_MEM:
-                print(self.memory)
                 if self.memory.get(self.ax) != None:
                     self.ax = self.memory.get(self.ax)
                 else:
